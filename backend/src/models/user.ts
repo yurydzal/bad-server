@@ -6,6 +6,7 @@ import validator from 'validator'
 import md5 from 'md5'
 
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../config'
+import { phoneRegExp, normalizePhoneNumber } from '../middlewares/validations'
 import UnauthorizedError from '../errors/unauthorized-error'
 
 export enum Role {
@@ -80,6 +81,14 @@ const userSchema = new mongoose.Schema<IUser, IUserModel, IUserMethods>(
         },
         phone: {
             type: String,
+            validate: {
+                validator: (v: string) => {
+                    const normalizedPhone = normalizePhoneNumber(v)
+                    return phoneRegExp.test(normalizedPhone)
+                },
+                message: 'Поле "phone" должно быть валидным телефоном.'
+            },
+            set: (v: string) => normalizePhoneNumber(v)
         },
         lastOrderDate: {
             type: Date,

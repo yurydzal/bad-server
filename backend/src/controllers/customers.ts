@@ -1,13 +1,13 @@
 import { NextFunction, Request, Response } from 'express'
 import { FilterQuery } from 'mongoose'
+import { roleGuardMiddleware } from '../middlewares/auth'
 import NotFoundError from '../errors/not-found-error'
 import Order from '../models/order'
-import User, { IUser } from '../models/user'
+import User, { IUser, Role } from '../models/user'
 
-// TODO: Добавить guard admin
 // eslint-disable-next-line max-len
 // Get GET /customers?page=2&limit=5&sort=totalAmount&order=desc&registrationDateFrom=2023-01-01&registrationDateTo=2023-12-31&lastOrderDateFrom=2023-01-01&lastOrderDateTo=2023-12-31&totalAmountFrom=100&totalAmountTo=1000&orderCountFrom=1&orderCountTo=10
-export const getCustomers = async (
+export const getCustomers = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -151,11 +151,10 @@ export const getCustomers = async (
     } catch (error) {
         next(error)
     }
-}
+}]
 
-// TODO: Добавить guard admin
 // Get /customers/:id
-export const getCustomerById = async (
+export const getCustomerById = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -169,11 +168,10 @@ export const getCustomerById = async (
     } catch (error) {
         next(error)
     }
-}
+}]
 
-// TODO: Добавить guard admin
 // Patch /customers/:id
-export const updateCustomer = async (
+export const updateCustomer = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -197,11 +195,10 @@ export const updateCustomer = async (
     } catch (error) {
         next(error)
     }
-}
+}]
 
-// TODO: Добавить guard admin
 // Delete /customers/:id
-export const deleteCustomer = async (
+export const deleteCustomer = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -217,4 +214,4 @@ export const deleteCustomer = async (
     } catch (error) {
         next(error)
     }
-}
+}]
