@@ -7,6 +7,7 @@ import mongoose from 'mongoose'
 import path from 'path'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
+import mongoSanitize from 'express-mongo-sanitize'
 import { DB_ADDRESS, ORIGIN_ALLOW } from './config'
 import errorHandler from './middlewares/error-handler'
 import serveStatic from './middlewares/serverStatic'
@@ -21,7 +22,16 @@ const limiter = rateLimit({
     message: 'Превышен лимит запросов, попробуйте позже'
 })
 
-app.use(helmet())
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "*"]
+        }
+    }
+}))
+
 app.use(limiter)
 app.use(cookieParser())
 
@@ -40,6 +50,8 @@ app.use(urlencoded({ extended: true, limit: '10kb' }))
 app.use(json({ limit: '10kb' }))
 
 app.disable('x-powered-by')
+
+app.use(mongoSanitize())
 
 app.options('*', cors())
 app.use(routes)
