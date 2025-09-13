@@ -17,7 +17,7 @@ export const uploadFile = async (
         const newFileName = `${uuidv4()}${fileExt}`
         const fileName = process.env.UPLOAD_PATH
             ? `/${process.env.UPLOAD_PATH}/${newFileName}`
-            : `/${newFileName}`
+            : newFileName
         return res.status(constants.HTTP_STATUS_CREATED).send({
             fileName,
             originalName: req.file?.originalname,
