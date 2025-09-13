@@ -36,11 +36,10 @@ export const getOrders = [roleGuardMiddleware(Role.Admin), async (
         const filters: FilterQuery<Partial<IOrder>> = {}
 
         if (status) {
-            if (typeof status === 'object') {
-                Object.assign(filters, status)
-            }
-            if (typeof status === 'string') {
+            if (typeof status === 'string' && /^[a-zA-Z0-9_-]+$/.test(status)) {
                 filters.status = status
+            } else {
+                throw new BadRequestError('Ошибочный статус заказа')
             }
         }
 
