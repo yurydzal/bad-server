@@ -4,13 +4,14 @@ import BadRequestError from '../errors/bad-request-error'
 import NotFoundError from '../errors/not-found-error'
 import Order, { IOrder } from '../models/order'
 import Product, { IProduct } from '../models/product'
-import User from '../models/user'
+import User, { Role } from '../models/user'
 import { normalizePhoneNumber } from '../middlewares/validations'
+import { roleGuardMiddleware } from '../middlewares/auth'
 
 // eslint-disable-next-line max-len
 // GET /orders?page=2&limit=5&sort=totalAmount&order=desc&orderDateFrom=2024-07-01&orderDateTo=2024-08-01&status=delivering&totalAmountFrom=100&totalAmountTo=1000&search=%2B1
 
-export const getOrders = async (
+export const getOrders = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -151,7 +152,7 @@ export const getOrders = async (
     } catch (error) {
         next(error)
     }
-}
+}]
 
 export const getOrdersCurrentUser = async (
     req: Request,

@@ -16,6 +16,14 @@ export enum PaymentType {
     Online = 'online',
 }
 
+const sanitizeText = (text: string): string => text
+        .replace(/[<>]/g, '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;')
+        .trim()
+
 // валидация id
 export const validateOrderBody = celebrate({
     body: Joi.object().keys({
@@ -61,7 +69,16 @@ export const validateOrderBody = celebrate({
         total: Joi.number().required().messages({
             'string.empty': 'Не указана сумма заказа',
         }),
-        comment: Joi.string().optional().allow(''),
+        comment: Joi.string()
+            .optional()
+            .allow('')
+            .custom((value) => {
+                if (!value) return value
+                return sanitizeText(value)
+            })
+            .messages({
+                'string.base': 'Комментарий должен быть текстом'
+            }),
     }),
 })
 
