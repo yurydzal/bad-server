@@ -3,6 +3,7 @@ import multer, { FileFilterCallback } from 'multer'
 import { join, extname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import fs from 'fs'
+import BadRequestError from '../errors/bad-request-error'
 
 type DestinationCallback = (error: Error | null, destination: string) => void
 type FileNameCallback = (error: Error | null, filename: string) => void
@@ -51,7 +52,7 @@ const fileFilter = (
     cb: FileFilterCallback
 ) => {
     if (!types.includes(file.mimetype)) {
-        return cb(null, false)
+        return cb(new BadRequestError('Неверный тип файла'))
     }
     return cb(null, true)
 }
