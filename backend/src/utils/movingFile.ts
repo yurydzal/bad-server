@@ -1,4 +1,4 @@
-import { existsSync, rename } from 'fs'
+import { existsSync, renameSync } from 'fs'
 import { basename, join } from 'path'
 
 function movingFile(imagePath: string, from: string, to: string) {
@@ -9,11 +9,11 @@ function movingFile(imagePath: string, from: string, to: string) {
         throw new Error('Ошибка при сохранении файла')
     }
 
-    rename(imagePathTemp, imagePathPermanent, (err) => {
-        if (err) {
-            throw new Error('Ошибка при сохранении файла')
-        }
-    })
+    try {
+        renameSync(imagePathTemp, imagePathPermanent)
+    } catch {
+        throw new Error('Ошибка при сохранении файла')
+    }
 }
 
 export default movingFile

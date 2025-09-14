@@ -4,12 +4,14 @@ import BadRequestError from '../errors/bad-request-error'
 import NotFoundError from '../errors/not-found-error'
 import Order, { IOrder } from '../models/order'
 import Product, { IProduct } from '../models/product'
-import User from '../models/user'
+import User, { Role } from '../models/user'
+import { normalizePhoneNumber } from '../middlewares/validations'
+import { roleGuardMiddleware } from '../middlewares/auth'
 
 // eslint-disable-next-line max-len
 // GET /orders?page=2&limit=5&sort=totalAmount&order=desc&orderDateFrom=2024-07-01&orderDateTo=2024-08-01&status=delivering&totalAmountFrom=100&totalAmountTo=1000&search=%2B1
 
-export const getOrders = async (
+export const getOrders = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -28,14 +30,16 @@ export const getOrders = async (
             search,
         } = req.query
 
+        const pageNumber = Number(page) || 1
+        const pageSize = Math.min(Number(limit) || 10, 10)
+
         const filters: FilterQuery<Partial<IOrder>> = {}
 
         if (status) {
-            if (typeof status === 'object') {
-                Object.assign(filters, status)
-            }
-            if (typeof status === 'string') {
+            if (typeof status === 'string' && /^[a-zA-Z0-9_-]+$/.test(status)) {
                 filters.status = status
+            } else {
+                throw new BadRequestError('Ошибочный статус заказа')
             }
         }
 
@@ -116,8 +120,8 @@ export const getOrders = async (
 
         aggregatePipeline.push(
             { $sort: sort },
-            { $skip: (Number(page) - 1) * Number(limit) },
-            { $limit: Number(limit) },
+            { $skip: (pageNumber - 1) * pageSize },
+            { $limit: pageSize },
             {
                 $group: {
                     _id: '$_id',
@@ -133,21 +137,21 @@ export const getOrders = async (
 
         const orders = await Order.aggregate(aggregatePipeline)
         const totalOrders = await Order.countDocuments(filters)
-        const totalPages = Math.ceil(totalOrders / Number(limit))
+        const totalPages = Math.ceil(totalOrders / pageSize)
 
         res.status(200).json({
             orders,
             pagination: {
                 totalOrders,
                 totalPages,
-                currentPage: Number(page),
-                pageSize: Number(limit),
+                currentPage: pageNumber,
+                pageSize,
             },
         })
     } catch (error) {
         next(error)
     }
-}
+}]
 
 export const getOrdersCurrentUser = async (
     req: Request,
@@ -157,9 +161,13 @@ export const getOrdersCurrentUser = async (
     try {
         const userId = res.locals.user._id
         const { search, page = 1, limit = 5 } = req.query
+
+        const pageNumber = Number(page) || 1
+        const pageSize = Math.min(Number(limit) || 5, 5)
+
         const options = {
-            skip: (Number(page) - 1) * Number(limit),
-            limit: Number(limit),
+            skip: (pageNumber - 1) * pageSize,
+            limit: pageSize,
         }
 
         const user = await User.findById(userId)
@@ -193,7 +201,7 @@ export const getOrdersCurrentUser = async (
             orders = orders.filter((order) => {
                 // eslint-disable-next-line max-len
                 const matchesProductTitle = order.products.some((product) =>
-                    productIds.some((id) => id.equals(product._id))
+                    productIds.some((id) => id && id.toString() === product._id?.toString())
                 )
                 // eslint-disable-next-line max-len
                 const matchesOrderNumber =
@@ -205,7 +213,7 @@ export const getOrdersCurrentUser = async (
         }
 
         const totalOrders = orders.length
-        const totalPages = Math.ceil(totalOrders / Number(limit))
+        const totalPages = Math.ceil(totalOrders / pageSize)
 
         orders = orders.slice(options.skip, options.skip + options.limit)
 
@@ -214,8 +222,8 @@ export const getOrdersCurrentUser = async (
             pagination: {
                 totalOrders,
                 totalPages,
-                currentPage: Number(page),
-                pageSize: Number(limit),
+                currentPage: pageNumber,
+                pageSize,
             },
         })
     } catch (error) {
@@ -294,8 +302,10 @@ export const createOrder = async (
         const { address, payment, phone, total, email, items, comment } =
             req.body
 
+        const normalizedPhone = normalizePhoneNumber(phone)
+
         items.forEach((id: Types.ObjectId) => {
-            const product = products.find((p) => p._id.equals(id))
+            const product = products.find((p) => (p._id as Types.ObjectId).equals(id))
             if (!product) {
                 throw new BadRequestError(`Товар с id ${id} не найден`)
             }
@@ -313,7 +323,7 @@ export const createOrder = async (
             totalAmount: total,
             products: items,
             payment,
-            phone,
+            phone: normalizedPhone,
             email,
             comment,
             customer: userId,

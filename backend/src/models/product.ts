@@ -1,4 +1,4 @@
-import { unlink } from 'fs'
+import { unlink, promises } from 'fs'
 import mongoose, { Document } from 'mongoose'
 import { join } from 'path'
 
@@ -48,24 +48,36 @@ const cardsSchema = new mongoose.Schema<IProduct>(
 
 cardsSchema.index({ title: 'text' })
 
-// Можно лучше: удалять старое изображением перед обновлением сущности
 cardsSchema.pre('findOneAndUpdate', async function deleteOldImage() {
     // @ts-ignore
     const updateImage = this.getUpdate().$set?.image
     const docToUpdate = await this.model.findOne(this.getQuery())
-    if (updateImage && docToUpdate) {
-        unlink(
-            join(__dirname, `../public/${docToUpdate.image.fileName}`),
-            (err) => console.log(err)
-        )
-    }
-})
 
-// Можно лучше: удалять файл с изображением после удаление сущности
+    if (!updateImage || !docToUpdate?.image?.fileName) {
+        return;
+    }
+
+    const imagePath = join(__dirname, `../public/${docToUpdate.image.fileName}`);
+
+    try {
+        await promises.unlink(imagePath);
+    } catch (err) {
+        console.error(`Не удалось удалить старое изображение по пути ${imagePath}:`, err);
+    }
+});
+
 cardsSchema.post('findOneAndDelete', async (doc: IProduct) => {
-    unlink(join(__dirname, `../public/${doc.image.fileName}`), (err) =>
-        console.log(err)
-    )
-})
+    if (!doc || !doc.image?.fileName) {
+        return;
+    }
+
+    const imagePath = join(__dirname, `../public/${doc.image.fileName}`);
+
+    try {
+        await promises.unlink(imagePath);
+    } catch (err) {
+        console.error(`Не удалось удалить изображение по пути: ${imagePath}:`, err);
+    }
+});
 
 export default mongoose.model<IProduct>('product', cardsSchema)

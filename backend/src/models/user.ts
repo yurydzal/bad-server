@@ -6,6 +6,7 @@ import validator from 'validator'
 import md5 from 'md5'
 
 import { ACCESS_TOKEN, REFRESH_TOKEN } from '../config'
+import { phoneRegExp, normalizePhoneNumber } from '../middlewares/validations'
 import UnauthorizedError from '../errors/unauthorized-error'
 
 export enum Role {
@@ -14,6 +15,7 @@ export enum Role {
 }
 
 export interface IUser extends Document {
+    _id: Types.ObjectId
     name: string
     email: string
     password: string
@@ -80,6 +82,14 @@ const userSchema = new mongoose.Schema<IUser, IUserModel, IUserMethods>(
         },
         phone: {
             type: String,
+            validate: {
+                validator: (v: string) => {
+                    const normalizedPhone = normalizePhoneNumber(v)
+                    return phoneRegExp.test(normalizedPhone)
+                },
+                message: 'Поле "phone" должно быть валидным телефоном.'
+            },
+            set: (v: string) => normalizePhoneNumber(v)
         },
         lastOrderDate: {
             type: Date,
@@ -105,7 +115,7 @@ const userSchema = new mongoose.Schema<IUser, IUserModel, IUserMethods>(
         // Возможно удаление пароля в контроллере создания, т.к. select: false не работает в случае создания сущности https://mongoosejs.com/docs/api/document.html#Document.prototype.toJSON()
         toJSON: {
             virtuals: true,
-            transform: (_doc, ret) => {
+            transform: (_doc, ret: Partial<Pick<IUser, 'tokens' | 'password' | '_id' | 'roles'>>) => {
                 delete ret.tokens
                 delete ret.password
                 delete ret._id

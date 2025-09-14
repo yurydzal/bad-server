@@ -1,6 +1,9 @@
 import { Request, Express } from 'express'
 import multer, { FileFilterCallback } from 'multer'
-import { join } from 'path'
+import { join, extname } from 'path'
+import { v4 as uuidv4 } from 'uuid'
+import fs from 'fs'
+import BadRequestError from '../errors/bad-request-error'
 
 type DestinationCallback = (error: Error | null, destination: string) => void
 type FileNameCallback = (error: Error | null, filename: string) => void
@@ -11,15 +14,18 @@ const storage = multer.diskStorage({
         _file: Express.Multer.File,
         cb: DestinationCallback
     ) => {
-        cb(
-            null,
-            join(
-                __dirname,
-                process.env.UPLOAD_PATH_TEMP
-                    ? `../public/${process.env.UPLOAD_PATH_TEMP}`
-                    : '../public'
-            )
-        )
+        const base = join(__dirname, '..', 'public')
+        const dest = process.env.UPLOAD_PATH_TEMP
+            ? join(base, process.env.UPLOAD_PATH_TEMP)
+            : base
+
+        try {
+            fs.mkdirSync(dest, { recursive: true })
+        } catch (err) {
+            return cb(err as Error, dest)
+        }
+
+        cb(null, dest)
     },
 
     filename: (
@@ -27,7 +33,8 @@ const storage = multer.diskStorage({
         file: Express.Multer.File,
         cb: FileNameCallback
     ) => {
-        cb(null, file.originalname)
+        const fileName = `${uuidv4()}${extname(file.originalname)}`
+        cb(null, fileName)
     },
 })
 
@@ -45,10 +52,13 @@ const fileFilter = (
     cb: FileFilterCallback
 ) => {
     if (!types.includes(file.mimetype)) {
-        return cb(null, false)
+        return cb(new BadRequestError('Неверный тип файла'))
     }
-
     return cb(null, true)
 }
 
-export default multer({ storage, fileFilter })
+export default multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 1024 * 1024 * 10, files: 1 },
+})

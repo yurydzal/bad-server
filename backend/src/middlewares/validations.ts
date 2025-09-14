@@ -2,12 +2,27 @@ import { Joi, celebrate } from 'celebrate'
 import { Types } from 'mongoose'
 
 // eslint-disable-next-line no-useless-escape
-export const phoneRegExp = /^(\+\d+)?(?:\s|-?|\(?\d+\)?)+$/
+// Обновленное регулярное выражение для телефона
+export const phoneRegExp = /^\+?[1-9]\d{0,2}(?:[-\s]?\d{3}){1,4}$/
+
+export const normalizePhoneNumber = (phone: string): string => {
+    if (!phone) return '';
+    const normalized = phone.replace(/[^\d+]/g, '')
+    return normalized.startsWith('+') ? normalized : normalized.replace(/\+/g, '')
+}
 
 export enum PaymentType {
     Card = 'card',
     Online = 'online',
 }
+
+const sanitizeText = (text: string): string => text
+        .replace(/[<>]/g, '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;')
+        .trim()
 
 // валидация id
 export const validateOrderBody = celebrate({
@@ -35,16 +50,35 @@ export const validateOrderBody = celebrate({
         email: Joi.string().email().required().messages({
             'string.empty': 'Не указан email',
         }),
-        phone: Joi.string().required().pattern(phoneRegExp).messages({
-            'string.empty': 'Не указан телефон',
-        }),
+        phone: Joi.string()
+            .required()
+            .custom((value, helpers) => {
+                const normalizedPhone = normalizePhoneNumber(value)
+                if (!phoneRegExp.test(normalizedPhone)) {
+                    return helpers.error('string.pattern.base')
+                }
+                return normalizedPhone
+            })
+            .messages({
+                'string.empty': 'Не указан телефон',
+                'string.pattern.base': 'Поле "phone" должно быть валидным телефоном.'
+            }),
         address: Joi.string().required().messages({
             'string.empty': 'Не указан адрес',
         }),
         total: Joi.number().required().messages({
             'string.empty': 'Не указана сумма заказа',
         }),
-        comment: Joi.string().optional().allow(''),
+        comment: Joi.string()
+            .optional()
+            .allow('')
+            .custom((value) => {
+                if (!value) return value
+                return sanitizeText(value)
+            })
+            .messages({
+                'string.base': 'Комментарий должен быть текстом'
+            }),
     }),
 })
 
@@ -119,17 +153,3 @@ export const validateUserBody = celebrate({
     }),
 })
 
-export const validateAuthentication = celebrate({
-    body: Joi.object().keys({
-        email: Joi.string()
-            .required()
-            .email()
-            .message('Поле "email" должно быть валидным email-адресом')
-            .messages({
-                'string.required': 'Поле "email" должно быть заполнено',
-            }),
-        password: Joi.string().required().messages({
-            'string.empty': 'Поле "password" должно быть заполнено',
-        }),
-    }),
-})

@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from 'express'
 import { constants } from 'http2'
 import { Error as MongooseError } from 'mongoose'
 import { join } from 'path'
+import { roleGuardMiddleware } from '../middlewares/auth'
+import { Role } from '../models/user'
 import BadRequestError from '../errors/bad-request-error'
 import ConflictError from '../errors/conflict-error'
 import NotFoundError from '../errors/not-found-error'
@@ -72,9 +74,8 @@ const createProduct = async (
     }
 }
 
-// TODO: Добавить guard admin
 // PUT /product
-const updateProduct = async (
+const updateProduct = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -118,11 +119,10 @@ const updateProduct = async (
         }
         return next(error)
     }
-}
+}]
 
-// TODO: Добавить guard admin
 // DELETE /product
-const deleteProduct = async (
+const deleteProduct = [roleGuardMiddleware(Role.Admin), async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -139,6 +139,6 @@ const deleteProduct = async (
         }
         return next(error)
     }
-}
+}]
 
 export { createProduct, deleteProduct, getProducts, updateProduct }

@@ -1,7 +1,7 @@
 /* eslint-disable prefer-arrow-callback */
 import mongoose, { Document, Schema, Types } from 'mongoose'
 import validator from 'validator'
-import { PaymentType, phoneRegExp } from '../middlewares/validations'
+import { PaymentType, phoneRegExp, normalizePhoneNumber } from '../middlewares/validations'
 import Counter from './counter'
 import User from './user'
 
@@ -60,9 +60,13 @@ const orderSchema: Schema = new Schema(
             type: String,
             required: [true, 'Поле "phone" должно быть заполнено'],
             validate: {
-                validator: (v: string) => phoneRegExp.test(v),
-                message: 'Поле "phone" должно быть валидным телефоном.',
+                validator: (v: string) => {
+                    const normalizedPhone = normalizePhoneNumber(v)
+                    return phoneRegExp.test(normalizedPhone)
+                },
+                message: 'Поле "phone" должно быть валидным телефоном.'
             },
+            set: (v: string) => normalizePhoneNumber(v)
         },
         comment: {
             type: String,
