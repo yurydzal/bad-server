@@ -49,8 +49,11 @@ const fileFilter = (
     if (!types.includes(file.mimetype) || file.size < 2048) {
         return cb(null, false)
     }
-
     return cb(null, true)
 }
 
-export default multer({ storage, fileFilter, limits: { fileSize: 1024 * 1024 * 10, files: 1 } })
+export default multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 1024 * 1024 * 10, files: 1 },
+})

@@ -17,7 +17,6 @@ export const uploadFile = async (
 
         return res.status(constants.HTTP_STATUS_CREATED).send({
             fileName,
-            originalName: req.file.originalname,
         })
     } catch (error) {
         return next(error)
