@@ -1,19 +1,11 @@
 import { Request, Express } from 'express'
 import multer, { FileFilterCallback } from 'multer'
-import { join } from 'path'
+import { join, extname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import fs from 'fs'
 
 type DestinationCallback = (error: Error | null, destination: string) => void
 type FileNameCallback = (error: Error | null, filename: string) => void
-
-const mimeToExt: Record<string, string> = {
-    'image/png': '.png',
-    'image/jpeg': '.jpg',
-    'image/jpg': '.jpg',
-    'image/gif': '.gif',
-    'image/svg+xml': '.svg',
-}
 
 const storage = multer.diskStorage({
     destination: (
@@ -40,13 +32,18 @@ const storage = multer.diskStorage({
         file: Express.Multer.File,
         cb: FileNameCallback
     ) => {
-        const ext = mimeToExt[file.mimetype] || ''
-        const fileName = `${uuidv4()}${ext}`
+        const fileName = `${uuidv4()}${extname(file.originalname)}`
         cb(null, fileName)
     },
 })
 
-const types = Object.keys(mimeToExt)
+const types = [
+    'image/png',
+    'image/jpg',
+    'image/jpeg',
+    'image/gif',
+    'image/svg+xml',
+]
 
 const fileFilter = (
     _req: Request,
